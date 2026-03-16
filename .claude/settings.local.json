@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:insglueck.jobs.personio.de)",
+      "WebFetch(domain:www.stiftungen.org)",
+      "WebFetch(domain:stifterverband.talention.com)",
+      "WebFetch(domain:www.falling-walls.com)",
+      "WebFetch(domain:www.glassdoor.de)",
+      "WebFetch(domain:falling-walls.jobs.personio.de)",
+      "WebFetch(domain:de.indeed.com)",
+      "WebFetch(domain:battleroyalstudios.jobs.personio.de)",
+      "WebFetch(domain:www.stepstone.de)",
+      "WebFetch(domain:we-conect.softgarden.io)",
+      "Bash(grep -v \"//\")",
+      "Bash(where node)",
+      "Bash(node --version)",
+      "Bash(cygpath -w /tmp/docx_out/word/document.xml)",
+      "Bash(powershell -Command \":*)",
+      "Bash(ls /tmp/*.txt)",
+      "Bash(ls /tmp/docx*)",
+      "Bash(python3 -:*)",
+      "Bash(# Find the right path and fix it ls /tmp/docx_out/word/ && echo \"\"found at /tmp/docx_out\"\" || echo \"\"not there\"\" find / -name \"\"document.xml\"\")",
+      "Bash(powershell.exe -File \"C:\\\\Users\\\\tony\\\\AppData\\\\Local\\\\Temp\\\\parse_docx2.ps1\")"
+    ]
+  }
+}

@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="theme-color" content="#9333ea"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<title>KidQuest 🎯</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+  :root{
+    --brand:#9333ea;--brand-dark:#7e22ce;--brand-light:#f3e8ff;
+    --brand-mid:#c084fc;--green:#22c55e;--red:#ef4444;
+    --yellow:#f59e0b;--blue:#3b82f6;--pink:#ec4899;
+  }
+  html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#faf5ff;overflow:hidden}
+  #app{height:100dvh;max-width:480px;margin:0 auto;display:flex;flex-direction:column;background:#faf5ff;position:relative;overflow:hidden}
+
+  /* ── Screens ── */
+  .screen{position:absolute;inset:0;display:flex;flex-direction:column;transition:transform .3s ease,opacity .3s ease;background:#faf5ff}
+  .screen.hidden{transform:translateX(100%);opacity:0;pointer-events:none}
+
+  /* ── Header ── */
+  .header{background:#fff;border-bottom:1px solid #e9d5ff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  .header h1{font-size:22px;font-weight:900;color:var(--brand);display:flex;align-items:center;gap:6px}
+  .header-action{background:var(--brand);color:#fff;border:none;width:38px;height:38px;border-radius:50%;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s}
+  .header-action:active{transform:scale(.92)}
+
+  /* ── Bottom Nav ── */
+  .bottom-nav{background:#fff;border-top:1px solid #e9d5ff;display:flex;flex-shrink:0;padding-bottom:env(safe-area-inset-bottom,0px)}
+  .nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0;border:none;background:transparent;cursor:pointer;font-size:11px;font-weight:700;color:#9ca3af;transition:color .15s}
+  .nav-btn.active{color:var(--brand)}
+  .nav-btn span:first-child{font-size:24px}
+
+  /* ── Scroll body ── */
+  .scroll-body{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:18px;display:flex;flex-direction:column;gap:14px}
+
+  /* ── Cards ── */
+  .card{background:#fff;border-radius:20px;padding:18px;border:2px solid #e5e7eb;transition:border-color .15s,box-shadow .15s}
+  .card.selected{border-color:var(--brand);background:var(--brand-light);box-shadow:0 2px 12px rgba(147,51,234,.15)}
+
+  /* ── Buttons ── */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:700;border-radius:16px;border:none;cursor:pointer;transition:transform .12s,opacity .12s;touch-action:manipulation;user-select:none}
+  .btn:active{transform:scale(.96)}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .btn-primary{background:var(--brand);color:#fff;padding:14px 24px;font-size:17px;box-shadow:0 3px 10px rgba(147,51,234,.3)}
+  .btn-secondary{background:#fff;color:#374151;padding:13px 22px;font-size:16px;border:2px solid #d1d5db}
+  .btn-sm{padding:9px 16px;font-size:14px;border-radius:12px}
+  .btn-xl{padding:18px 28px;font-size:19px;width:100%;box-shadow:0 4px 16px rgba(147,51,234,.35)}
+  .btn-ghost{background:transparent;color:var(--brand);padding:10px 16px;font-size:14px}
+  .btn-danger{background:#fee2e2;color:#dc2626;padding:8px 14px;font-size:13px;border-radius:10px}
+
+  /* ── Form ── */
+  input,select{width:100%;padding:13px 16px;border:2px solid #e5e7eb;border-radius:14px;font-size:16px;font-family:inherit;transition:border-color .15s;outline:none;background:#fff}
+  input:focus,select:focus{border-color:var(--brand)}
+  label{display:block;font-size:13px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+
+  /* ── Range slider ── */
+  input[type=range]{padding:0;height:10px;border:none;border-radius:99px;accent-color:var(--brand);background:#e9d5ff;cursor:pointer}
+
+  /* ── Chips ── */
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:99px;border:2px solid #e5e7eb;font-size:14px;font-weight:700;cursor:pointer;transition:all .15s;background:#fff;color:#374151}
+  .chip.active{border-color:var(--brand);background:var(--brand-light);color:var(--brand-dark)}
+  .chip:active{transform:scale(.95)}
+
+  /* ── Badge ── */
+  .badge{display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:99px;font-size:12px;font-weight:700}
+  .badge-purple{background:var(--brand-light);color:var(--brand-dark)}
+  .badge-green{background:#dcfce7;color:#15803d}
+  .badge-blue{background:#dbeafe;color:#1d4ed8}
+  .badge-yellow{background:#fef9c3;color:#92400e}
+  .badge-pink{background:#fce7f3;color:#9d174d}
+  .badge-gray{background:#f3f4f6;color:#374151}
+
+  /* ── Place grid ── */
+  .place-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  .place-card{display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 12px;border-radius:18px;border:2px solid #e5e7eb;background:#fff;cursor:pointer;font-size:13px;font-weight:700;color:#374151;transition:all .15s;text-align:center;touch-action:manipulation}
+  .place-card:active{transform:scale(.96)}
+  .place-card.selected{border-color:var(--brand);background:var(--brand-light);color:var(--brand-dark)}
+  .place-card .place-emoji{font-size:32px}
+
+  /* ── Game elements ── */
+  .game-option{display:flex;align-items:center;gap:14px;padding:16px;border-radius:18px;border:2px solid #e5e7eb;background:#fff;cursor:pointer;font-size:17px;font-weight:700;text-align:left;width:100%;transition:all .15s;min-height:64px;touch-action:manipulation}
+  .game-option:active{transform:scale(.98)}
+  .game-option.correct{border-color:#22c55e;background:#f0fdf4;color:#15803d;animation:bounceIn .4s ease}
+  .game-option.wrong{border-color:#ef4444;background:#fef2f2;color:#dc2626;animation:shake .35s ease}
+  .game-option.dimmed{opacity:.3}
+  .game-option.show-correct{border-color:#22c55e;background:#f0fdf4;color:#15803d;opacity:.7}
+  .tap-item{display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 10px;border-radius:18px;border:2px solid #e5e7eb;background:#fff;cursor:pointer;font-size:14px;font-weight:700;color:#374151;min-height:100px;transition:all .15s;touch-action:manipulation}
+  .tap-item:active{transform:scale(.96)}
+  .tap-item.selected{border-color:var(--brand);background:var(--brand-light);color:var(--brand-dark);transform:scale(1.04)}
+  .tap-item.correct{border-color:#22c55e;background:#f0fdf4;color:#15803d;animation:bounceIn .4s}
+  .tap-item.wrong{border-color:#ef4444;background:#fef2f2;color:#dc2626;animation:shake .35s}
+  .tap-item.faded{opacity:.35}
+  .tap-emoji{font-size:36px}
+  .match-btn{display:flex;align-items:center;gap:8px;padding:12px 14px;border-radius:14px;border:2px solid #e5e7eb;background:#fff;font-size:13px;font-weight:700;color:#374151;cursor:pointer;width:100%;transition:all .15s;touch-action:manipulation}
+  .match-btn.selected{border-color:var(--brand);background:var(--brand-light);color:var(--brand-dark)}
+  .match-btn.matched{border-color:#22c55e;background:#f0fdf4;color:#15803d;opacity:.65}
+  .match-btn.wrong-flash{border-color:#ef4444;background:#fef2f2;animation:shake .35s}
+  .checklist-item{display:flex;align-items:center;gap:14px;padding:16px;border-radius:18px;border:2px solid #e5e7eb;background:#fff;cursor:pointer;font-size:16px;font-weight:600;text-align:left;width:100%;transition:all .15s;touch-action:manipulation}
+  .checklist-item:active{transform:scale(.98)}
+  .checklist-item.checked{border-color:#22c55e;background:#f0fdf4;color:#15803d;animation:bounceIn .4s}
+
+  /* ── Progress bar ── */
+  .progress-wrap{height:10px;background:#e9d5ff;border-radius:99px;overflow:hidden}
+  .progress-bar{height:100%;background:var(--brand);border-radius:99px;transition:width .5s ease}
+
+  /* ── Loader ── */
+  .spinner{width:48px;height:48px;border:5px solid #e9d5ff;border-top-color:var(--brand);border-radius:50%;animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ── Animations ── */
+  @keyframes bounceIn{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+  @keyframes celebrate{0%{transform:scale(1) rotate(0)}25%{transform:scale(1.2) rotate(-5deg)}50%{transform:scale(1.3) rotate(5deg)}75%{transform:scale(1.1) rotate(-2deg)}100%{transform:scale(1) rotate(0)}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
+  .animate-fade-up{animation:fadeUp .3s ease}
+  .animate-celebrate{animation:celebrate .6s ease}
+  .animate-pulse{animation:pulse 1.8s ease infinite}
+
+  /* ── Setup / API screen ── */
+  .setup-hero{text-align:center;padding:30px 20px 10px}
+  .setup-hero .big-emoji{font-size:72px;display:block;margin-bottom:12px}
+  .setup-hero h1{font-size:32px;font-weight:900;color:var(--brand);margin-bottom:6px}
+  .setup-hero p{color:#6b7280;font-size:15px;line-height:1.5}
+  .info-box{background:#fff;border:2px solid #e9d5ff;border-radius:18px;padding:16px;font-size:14px;color:#374151;line-height:1.6}
+  .info-box a{color:var(--brand);font-weight:700}
+  .info-box ol{padding-left:18px;margin-top:8px}
+  .info-box ol li{margin-bottom:4px}
+
+  /* ── Misc ── */
+  .empty-state{text-align:center;padding:48px 20px;display:flex;flex-direction:column;align-items:center;gap:14px}
+  .empty-state .big-emoji{font-size:64px}
+  .section-label{font-size:12px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px}
+  .avatar-grid{display:flex;flex-wrap:wrap;gap:10px}
+  .avatar-opt{width:48px;height:48px;border-radius:14px;border:2px solid #e5e7eb;background:#fff;font-size:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s}
+  .avatar-opt.selected{border-color:var(--brand);background:var(--brand-light);transform:scale(1.1)}
+  .sport-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:4px}
+  .sport-opt{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;border:2px solid #e5e7eb;background:#fff;font-size:13px;font-weight:700;color:#374151;cursor:pointer;transition:all .15s}
+  .sport-opt.selected{border-color:#22c55e;background:#dcfce7;color:#15803d}
+  .hint-box{background:#fef9c3;border:1px solid #fde68a;border-radius:14px;padding:12px 16px;font-size:14px;color:#78350f;animation:fadeUp .25s ease}
+  .review-box{background:#fff;border-top:2px solid #e9d5ff;padding:16px 18px;display:flex;flex-direction:column;gap:12px;flex-shrink:0;animation:fadeUp .25s ease}
+  .explanation{font-size:15px;font-weight:600;color:#374151;line-height:1.5}
+  .location-badge{display:flex;align-items:center;gap:14px;background:#fff;border-radius:18px;padding:14px 16px;border:2px solid #bbf7d0}
+  .error-box{background:#fef2f2;border:2px solid #fecaca;border-radius:14px;padding:14px;font-size:14px;color:#dc2626}
+  .complete-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 24px;gap:20px;flex:1}
+  .game-header-wrap{background:#fff;border-bottom:1px solid #e9d5ff;padding:14px 18px;flex-shrink:0}
+  .game-instructions{background:#f3e8ff;border-radius:14px;padding:12px 14px;font-size:14px;color:#7c3aed;font-weight:600;line-height:1.5;margin:14px 18px 0}
+  .drag-zone{flex:1;border:2px dashed #d1d5db;border-radius:18px;padding:12px;background:#f9fafb;transition:all .2s;min-height:100px}
+  .drag-zone.over{border-color:var(--brand);background:var(--brand-light)}
+  .drag-item{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:12px;border:2px solid #c084fc;background:#f3e8ff;color:#7e22ce;font-size:14px;font-weight:700;cursor:grab;touch-action:none;user-select:none;margin:4px}
+  .drag-item.placed{opacity:.3;cursor:default}
+  .drag-item.placed-correct{border-color:#22c55e;background:#dcfce7;color:#15803d;opacity:.7;cursor:default}
+  .drag-item.placed-wrong{border-color:#ef4444;background:#fef2f2;color:#dc2626;opacity:.7;cursor:default}
+  .drag-ghost{position:fixed;pointer-events:none;z-index:9999;opacity:.85;transform:scale(1.05);background:#f3e8ff;border:2px solid var(--brand);border-radius:12px;padding:8px 14px;font-size:14px;font-weight:700;color:#7e22ce;display:none;white-space:nowrap}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ══════════════════════════════════════════
+       SCREEN: API Key Setup
+  ══════════════════════════════════════════ -->
+  <div class="screen" id="screen-setup">
+    <div class="scroll-body" style="padding-top:0">
+      <div class="setup-hero">
+        <span class="big-emoji">🎯</span>
+        <h1>KidQuest</h1>
+        <p>Location-aware educational games for your children, powered by AI</p>
+      </div>
+      <div class="info-box">
+        <strong>First, get your Anthropic API key:</strong>
+        <ol>
+          <li>Go to <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a></li>
+          <li>Sign in and click <strong>API Keys</strong> → <strong>Create Key</strong></li>
+          <li>Copy the key (starts with <code>sk-ant-</code>)</li>
+          <li>Paste it below</li>
+        </ol>
+        <p style="margin-top:10px;color:#9ca3af;font-size:13px">💡 New accounts get $5 free credit — about 1,600 free games. Your key is saved in this browser only.</p>
+      </div>
+      <div>
+        <label>Your Anthropic API Key</label>
+        <input type="password" id="api-key-input" placeholder="sk-ant-..." autocomplete="off" spellcheck="false"/>
+        <p id="api-key-error" style="color:#dc2626;font-size:13px;margin-top:6px;display:none"></p>
+      </div>
+      <button class="btn btn-primary btn-xl" onclick="saveApiKey()">Let's Go! 🚀</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SCREEN: Home (Profiles)
+  ══════════════════════════════════════════ -->
+  <div class="screen hidden" id="screen-home">
+    <div class="header">
+      <h1>🎯 KidQuest</h1>
+      <button class="header-action" onclick="openProfileEditor(null)" title="Add child">+</button>
+    </div>
+    <div class="scroll-body" id="profiles-list-wrap" style="padding-bottom:90px"></div>
+    <div class="bottom-nav">
+      <button class="nav-btn active" id="nav-home" onclick="showMainScreen('home')"><span>👦</span>Profiles</button>
+      <button class="nav-btn" id="nav-location" onclick="showMainScreen('location')"><span>🎮</span>Play</button>
+      <button class="nav-btn" id="nav-history" onclick="showMainScreen('history')"><span>📖</span>History</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SCREEN: Location
+  ══════════════════════════════════════════ -->
+  <div class="screen hidden" id="screen-location">
+    <div class="header">
+      <h1>📍 Where are you?</h1>
+    </div>
+    <div class="scroll-body" id="location-body" style="padding-bottom:100px"></div>
+    <div id="location-generate-bar" style="display:none;position:fixed;bottom:66px;left:50%;transform:translateX(-50%);width:100%;max-width:480px;padding:0 18px 12px;background:linear-gradient(transparent,#faf5ff 40%);z-index:20">
+      <button class="btn btn-primary btn-xl" onclick="generateGame()">🎮 Generate Game!</button>
+    </div>
+    <div class="bottom-nav">
+      <button class="nav-btn" id="nav-home2" onclick="showMainScreen('home')"><span>👦</span>Profiles</button>
+      <button class="nav-btn active" id="nav-location2" onclick="showMainScreen('location')"><span>🎮</span>Play</button>
+      <button class="nav-btn" id="nav-history2" onclick="showMainScreen('history')"><span>📖</span>History</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SCREEN: Game
+  ══════════════════════════════════════════ -->
+  <div class="screen hidden" id="screen-game">
+    <div id="game-content" style="display:flex;flex-direction:column;height:100%;overflow:hidden"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SCREEN: History
+  ══════════════════════════════════════════ -->
+  <div class="screen hidden" id="screen-history">
+    <div class="header">
+      <h1>📖 History</h1>
+      <button class="header-action" style="font-size:18px" onclick="clearHistory()" title="Clear history">🗑</button>
+    </div>
+    <div class="scroll-body" id="history-body"></div>
+    <div class="bottom-nav">
+      <button class="nav-btn" id="nav-home3" onclick="showMainScreen('home')"><span>👦</span>Profiles</button>
+      <button class="nav-btn" id="nav-location3" onclick="showMainScreen('location')"><span>🎮</span>Play</button>
+      <button class="nav-btn active" id="nav-history3" onclick="showMainScreen('history')"><span>📖</span>History</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       MODAL: Profile Editor
+  ══════════════════════════════════════════ -->
+  <div id="modal-profile" style="display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.45)">
+    <div style="position:absolute;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;background:#fff;border-radius:28px 28px 0 0;max-height:92dvh;overflow-y:auto;animation:fadeUp .3s ease">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid #f3e8ff;position:sticky;top:0;background:#fff;z-index:1">
+        <h2 id="modal-title" style="font-size:20px;font-weight:900;color:#111">New Child Profile</h2>
+        <button onclick="closeProfileEditor()" style="width:36px;height:36px;border-radius:50%;border:none;background:#f3f4f6;font-size:20px;cursor:pointer">✕</button>
+      </div>
+      <div style="padding:18px;display:flex;flex-direction:column;gap:18px">
+        <!-- Avatar -->
+        <div>
+          <label>Choose an avatar</label>
+          <div class="avatar-grid" id="avatar-grid"></div>
+        </div>
+        <!-- Name -->
+        <div>
+          <label>Child's name</label>
+          <input type="text" id="prof-name" placeholder="e.g. Emma" maxlength="30"/>
+        </div>
+        <!-- Age -->
+        <div>
+          <label>Age: <span id="age-label" style="color:var(--brand);font-size:16px;font-weight:900">5</span></label>
+          <input type="range" min="1" max="12" value="5" id="age-slider" oninput="updateAgeLabel(this.value)" style="width:100%;margin:6px 0"/>
+          <div id="age-band-label" style="text-align:center;background:var(--brand-light);border-radius:12px;padding:8px;font-size:14px;font-weight:700;color:var(--brand-dark);margin-top:4px"></div>
+        </div>
+        <!-- Skill tracks -->
+        <div>
+          <label>Skill tracks (choose all that apply)</label>
+          <div style="display:flex;flex-wrap:wrap;gap:10px" id="track-chips"></div>
+        </div>
+        <!-- Sport sub-select -->
+        <div id="sport-sub" style="display:none">
+          <label>Which sport? 🏅</label>
+          <div class="sport-grid" id="sport-grid"></div>
+        </div>
+        <!-- Error -->
+        <p id="prof-error" style="color:#dc2626;font-size:13px;display:none"></p>
+        <!-- Buttons -->
+        <div style="display:flex;gap:10px;padding-bottom:20px">
+          <button class="btn btn-secondary" style="flex:1" onclick="closeProfileEditor()">Cancel</button>
+          <button class="btn btn-primary" style="flex:1" onclick="saveProfile()">Save Profile</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Drag ghost element -->
+  <div class="drag-ghost" id="drag-ghost"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  CONSTANTS & DATA
+// ═══════════════════════════════════════════════════
+const AVATARS = ['🦊','🐸','🦁','🐼','🐨','🦄','🐙','🦋','🐧','🦖'];
+const TRACKS = [
+  {id:'Sports', label:'Sports & Movement', emoji:'⚽', badgeClass:'badge-green'},
+  {id:'STEM',   label:'Science & Math',   emoji:'🔬', badgeClass:'badge-blue'},
+  {id:'Arts',   label:'Arts & Creativity',emoji:'🎨', badgeClass:'badge-yellow'},
+  {id:'Social', label:'Social & Emotional',emoji:'🤝', badgeClass:'badge-pink'},
+];
+const SPORTS = [
+  {id:'tennis',     label:'Tennis',        emoji:'🎾'},
+  {id:'soccer',     label:'Soccer',        emoji:'⚽'},
+  {id:'basketball', label:'Basketball',    emoji:'🏀'},
+  {id:'swimming',   label:'Swimming',      emoji:'🏊'},
+  {id:'gymnastics', label:'Gymnastics',    emoji:'🤸'},
+  {id:'baseball',   label:'Baseball',      emoji:'⚾'},
+  {id:'running',    label:'Running',       emoji:'🏃'},
+  {id:'general',    label:'General Sports',emoji:'🏅'},
+];
+const AGE_BANDS = [
+  {min:1,max:2, label:'Toddler',          desc:'Colors, shapes & sounds'},
+  {min:3,max:4, label:'Little Explorer',  desc:'Letters, numbers & words'},
+  {min:5,max:7, label:'Junior',           desc:'Reading, logic & patterns'},
+  {min:8,max:10,label:'Thinker',          desc:'Strategy & observation'},
+  {min:11,max:12,label:'Preteen',         desc:'Reasoning & analysis'},
+];
+const PLACES = [
+  {id:'grocery_store', label:'Grocery Store',   emoji:'🛒', desc:'A grocery store filled with colorful food, fresh produce, and interesting products on shelves'},
+  {id:'park',          label:'Park',             emoji:'🌳', desc:'An outdoor park with open spaces, trees, grass, and nature all around'},
+  {id:'museum',        label:'Museum',           emoji:'🏛️', desc:'A museum with fascinating exhibits, artifacts, and displays to explore'},
+  {id:'library',       label:'Library',          emoji:'📚', desc:'A quiet library full of books, stories, and knowledge on every shelf'},
+  {id:'restaurant',    label:'Restaurant',       emoji:'🍽️', desc:'A restaurant with delicious food, different flavors, and a busy kitchen'},
+  {id:'zoo',           label:'Zoo',              emoji:'🦒', desc:'A zoo with amazing animals from around the world, each with unique features'},
+  {id:'beach',         label:'Beach',            emoji:'🏖️', desc:'A sandy beach with waves, shells, sea creatures, and the vast ocean'},
+  {id:'playground',    label:'Playground',       emoji:'🛝', desc:'A fun playground with equipment, open space to run, and activities to explore'},
+  {id:'sports_field',  label:'Sports Field',     emoji:'⚽', desc:'A sports venue with fields, courts, or tracks designed for athletic activities'},
+  {id:'home',          label:'Home',             emoji:'🏠', desc:'A cozy home with different rooms, everyday objects, and familiar surroundings'},
+  {id:'school',        label:'School',           emoji:'🏫', desc:'A school with classrooms, learning materials, books, and educational tools'},
+  {id:'mall',          label:'Shopping Mall',    emoji:'🏬', desc:'A shopping mall with many stores, bright signs, lots of people, and varied products'},
+  {id:'airport',       label:'Airport',          emoji:'✈️', desc:'A busy airport with airplanes, gates, travelers, and signs from all over the world'},
+  {id:'doctor',        label:"Doctor's Office",  emoji:'🏥', desc:'A medical office with health posters, equipment, and helpful doctors and nurses'},
+];
+const LOADER_MSGS = [
+  'Cooking up your adventure... 🍳',
+  'Sprinkling in some magic... ✨',
+  'Packing the fun bag... 🎒',
+  'Teaching the AI to play... 🤖',
+  'Almost ready for liftoff... 🚀',
+  'Mixing learning with fun... 🎨',
+];
+
+// ═══════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════
+let STATE = {
+  apiKey: localStorage.getItem('kq_api_key') || '',
+  profiles: JSON.parse(localStorage.getItem('kq_profiles') || '[]'),
+  selectedProfileId: null,
+  selectedPlace: null,
+  currentScreen: 'setup',
+  editingProfileId: null,
+  editorSelectedTracks: [],
+  editorSelectedSport: '',
+  editorSelectedAvatar: AVATARS[0],
+  activeGame: null,
+  gameRound: 0,
+  gameScore: 0,
+  gamePhase: 'playing', // playing | reviewing | complete
+  hintVisible: false,
+  matchSelectedLeft: null,
+  matchMatched: {}, // leftId -> rightId
+  tapSelected: new Set(),
+  checklistChecked: new Set(),
+  dragPlacements: {}, // itemId -> zoneId
+  history: JSON.parse(localStorage.getItem('kq_history') || '[]'),
+};
+
+function save(){
+  localStorage.setItem('kq_profiles', JSON.stringify(STATE.profiles));
+  localStorage.setItem('kq_history', JSON.stringify(STATE.history));
+  if(STATE.apiKey) localStorage.setItem('kq_api_key', STATE.apiKey);
+}
+
+function getAgeBand(age){return AGE_BANDS.find(b=>age>=b.min&&age<=b.max)||AGE_BANDS[AGE_BANDS.length-1]}
+function getPlace(id){return PLACES.find(p=>p.id===id)||{id,label:id,emoji:'📍',desc:''}}
+function uid(){return Math.random().toString(36).slice(2)+Date.now().toString(36)}
+
+// ═══════════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════════
+function showScreen(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));
+  const s=document.getElementById('screen-'+name);
+  if(s) s.classList.remove('hidden');
+  STATE.currentScreen=name;
+}
+
+function showMainScreen(name){
+  showScreen(name);
+  // Update all nav buttons
+  ['home','location','history'].forEach(n=>{
+    ['','2','3'].forEach(suffix=>{
+      const btn=document.getElementById('nav-'+n+suffix);
+      if(btn) btn.classList.toggle('active', n===name);
+    });
+  });
+  if(name==='home') renderProfiles();
+  if(name==='location') renderLocation();
+  if(name==='history') renderHistory();
+}
+
+// ═══════════════════════════════════════════════════
+//  API KEY SETUP
+// ═══════════════════════════════════════════════════
+function saveApiKey(){
+  const key=document.getElementById('api-key-input').value.trim();
+  const err=document.getElementById('api-key-error');
+  if(!key.startsWith('sk-ant-') || key.length<20){
+    err.textContent='That doesn\'t look right. The key should start with sk-ant-';
+    err.style.display='block';
+    return;
+  }
+  err.style.display='none';
+  STATE.apiKey=key;
+  localStorage.setItem('kq_api_key',key);
+  showMainScreen('home');
+}
+
+// ═══════════════════════════════════════════════════
+//  PROFILE MANAGEMENT
+// ═══════════════════════════════════════════════════
+function renderProfiles(){
+  const wrap=document.getElementById('profiles-list-wrap');
+  if(!wrap) return;
+  if(STATE.profiles.length===0){
+    wrap.innerHTML=`<div class="empty-state"><div class="big-emoji">👦</div><h2 style="font-size:22px;font-weight:800;color:#374151">Add your first child!</h2><p style="color:#9ca3af;max-width:260px">Create a profile to get personalized games wherever you are.</p><button class="btn btn-primary" style="margin-top:8px" onclick="openProfileEditor(null)">+ Add Child Profile</button></div>`;
+    return;
+  }
+  let html=`<p class="section-label">Select a child to play with</p>`;
+  STATE.profiles.forEach(p=>{
+    const sel=STATE.selectedProfileId===p.id;
+    const band=getAgeBand(p.age);
+    const trackBadges=(p.skillTracks||[]).map(t=>{
+      const tr=TRACKS.find(x=>x.id===t);
+      return `<span class="badge ${tr?tr.badgeClass:'badge-gray'}">${tr?tr.emoji:''} ${t}${t==='Sports'&&p.sportDetail?' ('+p.sportDetail+')':''}</span>`;
+    }).join('');
+    html+=`<div class="card ${sel?'selected':''}" onclick="selectProfile('${p.id}')">
+      ${sel?`<div style="position:absolute;top:14px;right:14px;width:26px;height:26px;background:var(--brand);border-radius:50%;color:#fff;font-size:14px;font-weight:900;display:flex;align-items:center;justify-content:center">✓</div>`:''}
+      <div style="display:flex;align-items:center;gap:14px;position:relative">
+        <div style="width:54px;height:54px;border-radius:16px;background:var(--brand-light);display:flex;align-items:center;justify-content:center;font-size:30px">${p.avatar||'👦'}</div>
+        <div>
+          <div style="font-size:18px;font-weight:900;color:#111">${p.name}</div>
+          <div style="font-size:13px;color:#9ca3af">${p.age} yrs · ${band.label}</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">${trackBadges}</div>
+      <div style="display:flex;gap:12px;margin-top:10px" onclick="event.stopPropagation()">
+        <button class="btn btn-ghost btn-sm" style="padding:6px 0;color:var(--brand)" onclick="openProfileEditor('${p.id}')">✏️ Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteProfile('${p.id}')">✕ Remove</button>
+      </div>
+    </div>`;
+  });
+  html+=`<button onclick="openProfileEditor(null)" style="width:100%;padding:18px;border-radius:20px;border:2px dashed #c084fc;background:transparent;color:var(--brand);font-size:17px;font-weight:700;cursor:pointer">+ Add Another Child</button>`;
+  wrap.innerHTML=html;
+
+  // floating CTA
+  let cta=document.getElementById('profile-cta');
+  if(!cta){
+    cta=document.createElement('div');
+    cta.id='profile-cta';
+    cta.style.cssText='position:fixed;bottom:66px;left:50%;transform:translateX(-50%);width:100%;max-width:480px;padding:0 18px 12px;background:linear-gradient(transparent,#faf5ff 40%);z-index:20';
+    document.getElementById('screen-home').appendChild(cta);
+  }
+  cta.style.display=STATE.selectedProfileId?'block':'none';
+  cta.innerHTML=STATE.selectedProfileId?`<button class="btn btn-primary btn-xl" onclick="showMainScreen('location')">🎮 Start Adventure!</button>`:'';
+}
+
+function selectProfile(id){
+  STATE.selectedProfileId=id===STATE.selectedProfileId?null:id;
+  renderProfiles();
+}
+
+function deleteProfile(id){
+  if(!confirm('Remove this profile?')) return;
+  STATE.profiles=STATE.profiles.filter(p=>p.id!==id);
+  if(STATE.selectedProfileId===id) STATE.selectedProfileId=null;
+  save();
+  renderProfiles();
+}
+
+// ── Profile Editor ──
+function openProfileEditor(id){
+  const p=id?STATE.profiles.find(x=>x.id===id):null;
+  STATE.editingProfileId=id||null;
+  STATE.editorSelectedTracks=p?[...(p.skillTracks||[])]:[];
+  STATE.editorSelectedSport=p?p.sportDetail||'':'';
+  STATE.editorSelectedAvatar=p?p.avatar||AVATARS[0]:AVATARS[0];
+
+  document.getElementById('modal-title').textContent=p?'Edit Profile':'New Child Profile';
+  document.getElementById('prof-name').value=p?p.name:'';
+  document.getElementById('prof-error').style.display='none';
+
+  const age=p?p.age:5;
+  document.getElementById('age-slider').value=age;
+  updateAgeLabel(age);
+
+  // Avatars
+  document.getElementById('avatar-grid').innerHTML=AVATARS.map(a=>
+    `<div class="avatar-opt ${a===STATE.editorSelectedAvatar?'selected':''}" onclick="selectAvatar('${a}')">${a}</div>`
+  ).join('');
+
+  // Tracks
+  renderTrackChips();
+
+  // Sports
+  renderSportGrid();
+
+  document.getElementById('modal-profile').style.display='flex';
+  document.getElementById('modal-profile').style.alignItems='flex-end';
+}
+
+function closeProfileEditor(){
+  document.getElementById('modal-profile').style.display='none';
+}
+
+function updateAgeLabel(v){
+  const b=getAgeBand(parseInt(v));
+  document.getElementById('age-label').textContent=v;
+  const el=document.getElementById('age-band-label');
+  if(el) el.textContent=`${b.label} — ${b.desc}`;
+}
+
+function selectAvatar(a){
+  STATE.editorSelectedAvatar=a;
+  document.querySelectorAll('.avatar-opt').forEach(el=>{
+    el.classList.toggle('selected',el.textContent===a);
+  });
+}
+
+function renderTrackChips(){
+  document.getElementById('track-chips').innerHTML=TRACKS.map(t=>
+    `<div class="chip ${STATE.editorSelectedTracks.includes(t.id)?'active':''}" onclick="toggleTrack('${t.id}')">${t.emoji} ${t.label}</div>`
+  ).join('');
+  document.getElementById('sport-sub').style.display=STATE.editorSelectedTracks.includes('Sports')?'block':'none';
+}
+
+function toggleTrack(id){
+  if(STATE.editorSelectedTracks.includes(id)){
+    STATE.editorSelectedTracks=STATE.editorSelectedTracks.filter(t=>t!==id);
+    if(id==='Sports') STATE.editorSelectedSport='';
+  } else {
+    STATE.editorSelectedTracks.push(id);
+  }
+  renderTrackChips();
+  renderSportGrid();
+}
+
+function renderSportGrid(){
+  document.getElementById('sport-grid').innerHTML=SPORTS.map(s=>
+    `<div class="sport-opt ${STATE.editorSelectedSport===s.id?'selected':''}" onclick="selectSport('${s.id}')">${s.emoji} ${s.label}</div>`
+  ).join('');
+}
+
+function selectSport(id){
+  STATE.editorSelectedSport=id;
+  renderSportGrid();
+}
+
+function saveProfile(){
+  const name=document.getElementById('prof-name').value.trim();
+  const age=parseInt(document.getElementById('age-slider').value);
+  const err=document.getElementById('prof-error');
+  if(!name){err.textContent='Please enter a name.';err.style.display='block';return;}
+  if(STATE.editorSelectedTracks.length===0){err.textContent='Please select at least one skill track.';err.style.display='block';return;}
+  err.style.display='none';
+
+  const now=new Date().toISOString();
+  if(STATE.editingProfileId){
+    const idx=STATE.profiles.findIndex(p=>p.id===STATE.editingProfileId);
+    if(idx>=0) STATE.profiles[idx]={...STATE.profiles[idx],name,age,avatar:STATE.editorSelectedAvatar,skillTracks:STATE.editorSelectedTracks,sportDetail:STATE.editorSelectedSport||undefined,updatedAt:now};
+  } else {
+    STATE.profiles.push({id:uid(),name,age,avatar:STATE.editorSelectedAvatar,skillTracks:STATE.editorSelectedTracks,sportDetail:STATE.editorSelectedSport||undefined,createdAt:now,updatedAt:now});
+  }
+  save();
+  closeProfileEditor();
+  renderProfiles();
+}
+
+// ═══════════════════════════════════════════════════
+//  LOCATION
+// ═══════════════════════════════════════════════════
+function renderLocation(){
+  const body=document.getElementById('location-body');
+  const profile=STATE.profiles.find(p=>p.id===STATE.selectedProfileId);
+  if(!profile){
+    body.innerHTML=`<div class="empty-state"><div class="big-emoji">👦</div><p style="color:#9ca3af;font-weight:600">No child selected. Go back and select a child first.</p><button class="btn btn-secondary" onclick="showMainScreen('home')">← Go to Profiles</button></div>`;
+    document.getElementById('location-generate-bar').style.display='none';
+    return;
+  }
+
+  let html=`
+    <div class="card" style="display:flex;align-items:center;gap:14px;border-color:#e9d5ff">
+      <span style="font-size:32px">${profile.avatar||'👦'}</span>
+      <div>
+        <div style="font-weight:900;font-size:17px;color:#111">${profile.name}</div>
+        <div style="font-size:13px;color:#9ca3af">Age ${profile.age} · ${(profile.skillTracks||[]).join(', ')}</div>
+      </div>
+    </div>`;
+
+  if(STATE.selectedPlace){
+    const p=STATE.selectedPlace;
+    html+=`<div class="location-badge animate-fade-up">
+      <span style="font-size:38px">${p.emoji}</span>
+      <div style="flex:1"><div style="font-weight:900;font-size:17px">${p.label}</div><div style="font-size:13px;color:#22c55e;font-weight:700">Location selected ✓</div></div>
+      <button onclick="STATE.selectedPlace=null;renderLocation()" style="background:none;border:none;font-size:22px;color:#9ca3af;cursor:pointer">✕</button>
+    </div>
+    <button class="btn btn-ghost" onclick="STATE.selectedPlace=null;renderLocation()" style="width:100%;text-align:center">Choose a different place →</button>`;
+  } else {
+    html+=`<p class="section-label">Choose your location</p>
+    <div class="place-grid" id="place-grid">`;
+    PLACES.forEach(pl=>{
+      html+=`<div class="place-card" onclick="selectPlace('${pl.id}')"><span class="place-emoji">${pl.emoji}</span><span>${pl.label}</span></div>`;
+    });
+    html+=`</div>`;
+  }
+
+  body.innerHTML=html;
+  document.getElementById('location-generate-bar').style.display=STATE.selectedPlace?'block':'none';
+}
+
+function selectPlace(id){
+  STATE.selectedPlace=getPlace(id);
+  renderLocation();
+}
+
+// ═══════════════════════════════════════════════════
+//  AI GAME GENERATION
+// ═══════════════════════════════════════════════════
+const SYSTEM_PROMPT=`You are KidQuest, an expert children's educational game designer. You create interactive, location-aware games for children aged 1-12.
+
+ABSOLUTE RULES:
+1. Output ONLY valid JSON — no markdown code blocks, no explanation, no preamble.
+2. Never include violence, scary content, or adult concepts.
+3. Make vocabulary match the child's exact age.
+4. Games must be completable in 3-10 minutes without equipment.
+5. Every game MUST reference real, observable things at the stated location.
+6. Be enthusiastic and encouraging.
+7. Use emojis generously for younger children.`;
+
+function buildPrompt(profile, place){
+  const band=getAgeBand(profile.age);
+  const ageRules={
+    'Toddler':'Use ONLY colors, shapes, animal sounds, counting to 5. Max 2-word answers. Lots of emojis.',
+    'Little Explorer':'Use simple words, basic letters, counting to 10, colors. Very short sentences.',
+    'Junior':'Can read simple words, basic math (add/subtract to 20), pattern recognition.',
+    'Thinker':'Multi-step reasoning, estimation, scientific observation, strategy.',
+    'Preteen':'Deductive reasoning, complex patterns, advanced vocabulary, analytical thinking.',
+  }[band.label]||'';
+
+  const trackMap={
+    Sports:(sport)=>sport?`${sport}: tracking objects, reaction time, spatial awareness, strategy specific to ${sport}`:'motor skills, coordination, reaction time, spatial awareness, strategy',
+    STEM:()=>'observation, cause-and-effect, counting, measurement, categorization, scientific curiosity',
+    Arts:()=>'color recognition, pattern identification, creativity, storytelling, aesthetic observation',
+    Social:()=>'empathy, sharing, teamwork, communication, reading emotions, cooperation',
+  };
+  const trackGuidance=(profile.skillTracks||[]).map(t=>`- ${t}: ${(trackMap[t]||(()=>'learning and curiosity'))(profile.sportDetail)}`).join('\n');
+
+  return `GAME CONTEXT:
+- Location: ${place.label} (${place.id})
+- Environment: ${place.desc}
+- Child's age: ${profile.age} years old (${band.label})
+- Age rules: ${ageRules}
+- Skill tracks:
+${trackGuidance}
+- Rounds: 3
+
+GAME TYPE GUIDE (pick best fit):
+- "multiple_choice": prediction, science questions, sports strategy — works all ages
+- "tap_to_select": color/shape/category hunts — BEST for ages 1-6, very hands-on
+- "matching": vocabulary pairs, cause-effect links — BEST for ages 4-10
+- "observation": checklist tasks in real environment — BEST for museums/nature (ages 5+)
+- "drag_and_drop": sorting and categorizing — BEST for ages 5-10
+For ages 1-3: STRONGLY prefer "tap_to_select".
+For museum/nature: STRONGLY prefer "observation".
+
+Output ONLY a valid JSON object (no markdown) with this structure:
+{
+  "title": "Fun 2-4 word game name",
+  "description": "One exciting sentence",
+  "type": "multiple_choice|tap_to_select|matching|drag_and_drop|observation",
+  "instructions": "2-3 simple sentences for the child",
+  "rounds": [
+    {
+      "roundId": "r1",
+      "prompt": "The question or task",
+      "explanation": "Short encouraging explanation after answer",
+      "hint": "Helpful hint",
+      "options": [{"id":"a","text":"...","emoji":"😀","isCorrect":true}],
+      "items": [{"id":"red","label":"Red","emoji":"🔴","isTarget":true}],
+      "pairs": [{"leftId":"l1","leftLabel":"Cat","leftEmoji":"🐱","rightId":"r1","rightLabel":"Meow","rightEmoji":"💬"}],
+      "checklist": [{"id":"c1","text":"Find something round","emoji":"⭕"}],
+      "draggables": [{"id":"d1","label":"Apple","emoji":"🍎","targetZoneId":"fruits"}],
+      "dropZones": [{"id":"fruits","label":"Fruits","emoji":"🍇"}]
+    }
+  ],
+  "completionMessage": "Celebratory message",
+  "totalRounds": 3
+}
+Include ONLY fields for the chosen game type per round.`;
+}
+
+async function generateGame(){
+  const profile=STATE.profiles.find(p=>p.id===STATE.selectedProfileId);
+  const place=STATE.selectedPlace;
+  if(!profile||!place) return;
+
+  showScreen('game');
+  showLoader();
+
+  try {
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key':STATE.apiKey,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true',
+      },
+      body:JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:2048,
+        temperature:0.8,
+        system:SYSTEM_PROMPT,
+        messages:[{role:'user',content:buildPrompt(profile,place)}],
+      }),
+    });
+
+    if(!resp.ok){
+      const e=await resp.json().catch(()=>({}));
+      throw new Error(e.error?.message||`API error ${resp.status}`);
+    }
+
+    const data=await resp.json();
+    let text=data.content?.[0]?.text||'';
+    // Strip markdown fences if present
+    text=text.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
+    const game=JSON.parse(text);
+    game.id=uid();
+
+    STATE.activeGame=game;
+    STATE.gameRound=0;
+    STATE.gameScore=0;
+    STATE.gamePhase='playing';
+    STATE.hintVisible=false;
+
+    // Add to history
+    STATE.history.unshift({
+      id:uid(),
+      profileName:profile.name,
+      profileAvatar:profile.avatar||'👦',
+      placeType:place.id,
+      placeEmoji:place.emoji,
+      placeLabel:place.label,
+      gameTitle:game.title,
+      skillTrack:(profile.skillTracks||[])[0]||'',
+      completedAt:new Date().toISOString(),
+      score:null,
+      totalRounds:game.totalRounds,
+    });
+    if(STATE.history.length>50) STATE.history=STATE.history.slice(0,50);
+    save();
+
+    renderGame();
+  } catch(err){
+    showGameError(err.message);
+  }
+}
+
+function showLoader(){
+  let idx=0;
+  const gc=document.getElementById('game-content');
+  gc.innerHTML=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:40px;text-align:center">
+    <div style="font-size:70px;animation:pulse 1.8s ease infinite">🎯</div>
+    <div class="spinner"></div>
+    <p id="loader-msg" style="font-size:18px;font-weight:800;color:var(--brand);animation:pulse 1.8s ease infinite">${LOADER_MSGS[0]}</p>
+    <p style="font-size:14px;color:#9ca3af">Creating a personalized game just for your child</p>
+  </div>`;
+  const interval=setInterval(()=>{
+    const el=document.getElementById('loader-msg');
+    if(el){idx=(idx+1)%LOADER_MSGS.length;el.textContent=LOADER_MSGS[idx];}
+    else clearInterval(interval);
+  },1800);
+}
+
+function showGameError(msg){
+  const gc=document.getElementById('game-content');
+  gc.innerHTML=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:40px;text-align:center">
+    <div style="font-size:60px">😔</div>
+    <h2 style="font-size:22px;font-weight:800;color:#374151">Couldn't generate a game</h2>
+    <div class="error-box" style="width:100%;max-width:320px">${escHtml(msg)}</div>
+    <button class="btn btn-primary" onclick="generateGame()">🔄 Try Again</button>
+    <button class="btn btn-secondary" onclick="showMainScreen('location')">← Change Location</button>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════
+//  GAME RENDERING
+// ═══════════════════════════════════════════════════
+function renderGame(){
+  const game=STATE.activeGame;
+  if(!game) return;
+  const place=STATE.selectedPlace;
+  const round=game.rounds[STATE.gameRound];
+  const progress=Math.round(((STATE.gameRound)/(game.totalRounds))*100);
+  const gc=document.getElementById('game-content');
+
+  if(STATE.gamePhase==='complete'){
+    renderComplete();
+    return;
+  }
+
+  // Header
+  let html=`<div class="game-header-wrap">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px">
+      <div style="flex:1">
+        <div style="font-size:19px;font-weight:900;color:#111;line-height:1.2">${escHtml(game.title)}</div>
+        <div style="font-size:13px;color:#9ca3af;margin-top:2px">${escHtml(game.description)}</div>
+      </div>
+      ${place?`<span class="badge badge-gray">${place.emoji} ${place.label}</span>`:''}
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="progress-wrap" style="flex:1"><div class="progress-bar" style="width:${progress}%"></div></div>
+      <span style="font-size:13px;font-weight:700;color:#374151;white-space:nowrap">${STATE.gameRound+1}/${game.totalRounds}</span>
+      <span style="font-size:13px;font-weight:700;color:#22c55e;white-space:nowrap">⭐ ${STATE.gameScore}</span>
+    </div>
+  </div>`;
+
+  // Instructions (first round)
+  if(STATE.gameRound===0){
+    html+=`<div class="game-instructions">📋 ${escHtml(game.instructions)}</div>`;
+  }
+
+  // Round content wrapper (scrollable)
+  html+=`<div style="flex:1;overflow-y:auto;overscroll-behavior:contain" id="round-scroll">`;
+  html+=renderRound(round, game.type);
+  html+=`</div>`;
+
+  // Hint
+  if(STATE.gamePhase==='playing'&&round.hint){
+    html+=`<div style="padding:0 18px 10px">`;
+    if(STATE.hintVisible){
+      html+=`<div class="hint-box">💡 Hint: ${escHtml(round.hint)}</div>`;
+    } else {
+      html+=`<button class="btn btn-ghost" style="width:100%;text-align:center;color:#9ca3af;font-size:14px" onclick="showHint()">Need a hint?</button>`;
+    }
+    html+=`</div>`;
+  }
+
+  // Review panel
+  if(STATE.gamePhase==='reviewing'){
+    html+=`<div class="review-box">
+      <p class="explanation">💡 ${escHtml(round.explanation)}</p>
+      <button class="btn btn-primary" style="width:100%" onclick="nextRound()">
+        ${STATE.gameRound+1>=game.totalRounds?'🏆 Finish!':'Next Round →'}
+      </button>
+    </div>`;
+  }
+
+  gc.innerHTML=html;
+  initDragDrop();
+}
+
+function renderRound(round, type){
+  switch(type){
+    case 'multiple_choice': return renderMultipleChoice(round);
+    case 'tap_to_select':   return renderTapToSelect(round);
+    case 'matching':        return renderMatching(round);
+    case 'observation':     return renderObservation(round);
+    case 'drag_and_drop':   return renderDragDrop(round);
+    default: return `<p style="padding:20px;color:#dc2626">Unknown game type: ${type}</p>`;
+  }
+}
+
+function renderMultipleChoice(round){
+  let html=`<div style="padding:18px;display:flex;flex-direction:column;gap:14px;animation:fadeUp .3s ease">
+    <p style="font-size:20px;font-weight:800;color:#111;text-align:center;line-height:1.3">${escHtml(round.prompt)}</p>
+    <div style="display:flex;flex-direction:column;gap:10px">`;
+  (round.options||[]).forEach(opt=>{
+    let cls='game-option';
+    if(STATE.gamePhase==='reviewing'){
+      if(opt.isCorrect) cls+=' show-correct';
+    }
+    html+=`<button class="${cls}" id="opt-${opt.id}" onclick="answerMC('${opt.id}',${opt.isCorrect})">
+      ${opt.emoji?`<span style="font-size:30px;flex-shrink:0">${opt.emoji}</span>`:''}
+      <span style="flex:1">${escHtml(opt.text)}</span>
+    </button>`;
+  });
+  html+=`</div></div>`;
+  return html;
+}
+
+function answerMC(id,isCorrect){
+  if(STATE.gamePhase!=='playing') return;
+  const btn=document.getElementById('opt-'+id);
+  if(btn){
+    btn.classList.add(isCorrect?'correct':'wrong');
+    if(!isCorrect){
+      // Show correct
+      const round=STATE.activeGame.rounds[STATE.gameRound];
+      (round.options||[]).forEach(opt=>{if(opt.isCorrect){const b=document.getElementById('opt-'+opt.id);if(b)b.classList.add('show-correct');}});
+    }
+  }
+  // Dim others
+  document.querySelectorAll('.game-option').forEach(b=>{
+    if(b.id!=='opt-'+id&&!b.classList.contains('show-correct')) b.classList.add('dimmed');
+  });
+  if(isCorrect) STATE.gameScore++;
+  if(navigator.vibrate) navigator.vibrate(isCorrect?[50,30,50]:[200]);
+  STATE.gamePhase='reviewing';
+  // Re-render to show review panel without changing round content
+  const gc=document.getElementById('game-content');
+  const existing=gc.querySelector('.review-box');
+  if(!existing){
+    const round=STATE.activeGame.rounds[STATE.gameRound];
+    const place=STATE.selectedPlace;
+    const game=STATE.activeGame;
+    const rev=document.createElement('div');
+    rev.className='review-box';
+    rev.innerHTML=`<p class="explanation">💡 ${escHtml(round.explanation)}</p>
+      <button class="btn btn-primary" style="width:100%" onclick="nextRound()">${STATE.gameRound+1>=game.totalRounds?'🏆 Finish!':'Next Round →'}</button>`;
+    gc.appendChild(rev);
+    // Hide hint
+    const hintEl=gc.querySelector('.btn-ghost');
+    if(hintEl&&hintEl.textContent.includes('hint')) hintEl.parentElement.style.display='none';
+  }
+}
+
+function renderTapToSelect(round){
+  STATE.tapSelected=new Set();
+  let html=`<div style="padding:18px;display:flex;flex-direction:column;gap:14px;animation:fadeUp .3s ease">
+    <p style="font-size:20px;font-weight:800;color:#111;text-align:center;line-height:1.3">${escHtml(round.prompt)}</p>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">`;
+  (round.items||[]).forEach(item=>{
+    html+=`<div class="tap-item" id="ti-${item.id}" onclick="toggleTap('${item.id}',${item.isTarget})">
+      <span class="tap-emoji">${item.emoji||'❓'}</span>
+      <span style="font-size:15px;font-weight:700">${escHtml(item.label)}</span>
+    </div>`;
+  });
+  html+=`</div>
+    <button class="btn btn-primary" style="width:100%;margin-top:4px" id="tap-submit" onclick="submitTap()" disabled>✅ Check My Answer</button>
+  </div>`;
+  return html;
+}
+
+function toggleTap(id,isTarget){
+  if(STATE.gamePhase!=='playing') return;
+  if(STATE.tapSelected.has(id)) STATE.tapSelected.delete(id);
+  else STATE.tapSelected.add(id);
+  const el=document.getElementById('ti-'+id);
+  if(el) el.classList.toggle('selected',STATE.tapSelected.has(id));
+  const sb=document.getElementById('tap-submit');
+  if(sb) sb.disabled=STATE.tapSelected.size===0;
+  if(navigator.vibrate) navigator.vibrate(30);
+}
+
+function submitTap(){
+  if(STATE.gamePhase!=='playing') return;
+  const round=STATE.activeGame.rounds[STATE.gameRound];
+  const targets=(round.items||[]).filter(i=>i.isTarget).map(i=>i.id);
+  const sel=[...STATE.tapSelected];
+  const correct=targets.length===sel.length&&targets.every(t=>STATE.tapSelected.has(t));
+  if(correct) STATE.gameScore++;
+  if(navigator.vibrate) navigator.vibrate(correct?[50,30,100]:[200]);
+
+  (round.items||[]).forEach(item=>{
+    const el=document.getElementById('ti-'+item.id);
+    if(!el) return;
+    el.classList.remove('selected');
+    if(item.isTarget) el.classList.add('correct');
+    else if(STATE.tapSelected.has(item.id)) el.classList.add('wrong');
+    else el.classList.add('faded');
+  });
+  document.getElementById('tap-submit').style.display='none';
+  STATE.gamePhase='reviewing';
+  addReviewPanel();
+}
+
+function renderMatching(round){
+  STATE.matchSelectedLeft=null;
+  STATE.matchMatched={};
+  const pairs=round.pairs||[];
+  const rightItems=[...pairs].sort(()=>Math.random()-.5);
+  let html=`<div style="padding:18px;animation:fadeUp .3s ease">
+    <p style="font-size:20px;font-weight:800;color:#111;text-align:center;margin-bottom:16px;line-height:1.3">${escHtml(round.prompt)}</p>
+    <div style="display:flex;gap:10px">
+      <div style="flex:1;display:flex;flex-direction:column;gap:8px">`;
+  pairs.forEach(p=>{
+    html+=`<button class="match-btn" id="ml-${p.leftId}" onclick="matchLeft('${p.leftId}')">
+      ${p.leftEmoji?`<span style="font-size:20px">${p.leftEmoji}</span>`:''}
+      <span style="truncate">${escHtml(p.leftLabel)}</span>
+    </button>`;
+  });
+  html+=`</div>
+      <div style="display:flex;flex-direction:column;justify-content:space-around;color:#d1d5db;font-weight:900;padding-top:4px">`;
+  pairs.forEach(()=>html+=`<span style="font-size:18px">→</span>`);
+  html+=`</div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:8px">`;
+  rightItems.forEach(p=>{
+    html+=`<button class="match-btn" id="mr-${p.rightId}" onclick="matchRight('${p.rightId}','${p.leftId}')">
+      ${p.rightEmoji?`<span style="font-size:20px">${p.rightEmoji}</span>`:''}
+      <span style="truncate">${escHtml(p.rightLabel)}</span>
+    </button>`;
+  });
+  html+=`</div></div>
+    <p style="text-align:center;font-size:13px;color:#9ca3af;margin-top:10px" id="match-progress">0/${pairs.length} matched</p>
+  </div>`;
+  return html;
+}
+
+function matchLeft(leftId){
+  if(STATE.gamePhase!=='playing') return;
+  if(STATE.matchMatched[leftId]) return;
+  STATE.matchSelectedLeft=leftId===STATE.matchSelectedLeft?null:leftId;
+  document.querySelectorAll('.match-btn[id^="ml-"]').forEach(b=>{
+    b.classList.toggle('selected',b.id==='ml-'+STATE.matchSelectedLeft&&!STATE.matchMatched[leftId]);
+  });
+}
+
+function matchRight(rightId, leftPairId){
+  if(STATE.gamePhase!=='playing'||!STATE.matchSelectedLeft) return;
+  const leftId=STATE.matchSelectedLeft;
+  const round=STATE.activeGame.rounds[STATE.gameRound];
+  const pair=round.pairs.find(p=>p.leftId===leftId);
+  const isMatch=pair&&pair.rightId===rightId;
+
+  if(isMatch){
+    STATE.matchMatched[leftId]=rightId;
+    document.getElementById('ml-'+leftId)?.classList.replace('selected','matched');
+    document.getElementById('mr-'+rightId)?.classList.add('matched');
+    if(navigator.vibrate) navigator.vibrate([50,30,50]);
+    STATE.matchSelectedLeft=null;
+    const prog=document.getElementById('match-progress');
+    if(prog) prog.textContent=`${Object.keys(STATE.matchMatched).length}/${round.pairs.length} matched`;
+    if(Object.keys(STATE.matchMatched).length===round.pairs.length){
+      STATE.gameScore++;
+      STATE.gamePhase='reviewing';
+      setTimeout(addReviewPanel,600);
+    }
+  } else {
+    const lb=document.getElementById('ml-'+leftId);
+    const rb=document.getElementById('mr-'+rightId);
+    if(lb) lb.classList.add('wrong-flash');
+    if(rb) rb.classList.add('wrong-flash');
+    if(navigator.vibrate) navigator.vibrate(200);
+    setTimeout(()=>{
+      lb?.classList.remove('wrong-flash','selected');
+      rb?.classList.remove('wrong-flash');
+      STATE.matchSelectedLeft=null;
+    },600);
+  }
+}
+
+function renderObservation(round){
+  STATE.checklistChecked=new Set();
+  const items=round.checklist||[];
+  let html=`<div style="padding:18px;display:flex;flex-direction:column;gap:14px;animation:fadeUp .3s ease">
+    <p style="font-size:20px;font-weight:800;color:#111;text-align:center;line-height:1.3">${escHtml(round.prompt)}</p>
+    <div>
+      <div class="progress-wrap"><div class="progress-bar" id="obs-bar" style="width:0%"></div></div>
+      <p id="obs-count" style="text-align:center;font-size:13px;color:#9ca3af;margin-top:6px">0 of ${items.length} found</p>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">`;
+  items.forEach(item=>{
+    html+=`<button class="checklist-item" id="ci-${item.id}" onclick="checkItem('${item.id}',${items.length})">
+      <span id="cie-${item.id}" style="font-size:28px;transition:transform .2s">${item.emoji||'⬜'}</span>
+      <span id="cit-${item.id}" style="font-size:15px;font-weight:600;flex:1;text-align:left">${escHtml(item.text)}</span>
+    </button>`;
+  });
+  html+=`</div></div>`;
+  return html;
+}
+
+function checkItem(id,total){
+  if(STATE.gamePhase!=='playing') return;
+  if(STATE.checklistChecked.has(id)) return;
+  STATE.checklistChecked.add(id);
+  if(navigator.vibrate) navigator.vibrate(30);
+  const btn=document.getElementById('ci-'+id);
+  const emo=document.getElementById('cie-'+id);
+  const txt=document.getElementById('cit-'+id);
+  if(btn) btn.classList.add('checked');
+  if(emo){emo.textContent='✅';emo.style.transform='scale(1.3)';}
+  if(txt) txt.style.textDecoration='line-through';
+  const n=STATE.checklistChecked.size;
+  const bar=document.getElementById('obs-bar');
+  const cnt=document.getElementById('obs-count');
+  if(bar) bar.style.width=`${Math.round((n/total)*100)}%`;
+  if(cnt) cnt.textContent=`${n} of ${total} found`;
+  if(n===total){
+    STATE.gameScore++;
+    STATE.gamePhase='reviewing';
+    setTimeout(addReviewPanel,800);
+  }
+}
+
+function renderDragDrop(round){
+  STATE.dragPlacements={};
+  const draggables=round.draggables||[];
+  const zones=round.dropZones||[];
+  let html=`<div style="padding:18px;display:flex;flex-direction:column;gap:14px;animation:fadeUp .3s ease">
+    <p style="font-size:20px;font-weight:800;color:#111;text-align:center;line-height:1.3">${escHtml(round.prompt)}</p>
+    <div style="background:#fff;border-radius:18px;border:2px solid #e9d5ff;padding:12px;display:flex;flex-wrap:wrap;gap:6px;min-height:60px" id="drag-source">`;
+  draggables.forEach(d=>{
+    html+=`<div class="drag-item" id="drag-${d.id}" data-id="${d.id}" data-target="${d.targetZoneId}">${d.emoji||''} ${escHtml(d.label)}</div>`;
+  });
+  html+=`</div>
+    <div style="display:flex;gap:10px">`;
+  zones.forEach(z=>{
+    html+=`<div class="drag-zone" id="zone-${z.id}" data-zone="${z.id}">
+      <p style="text-align:center;font-size:13px;font-weight:700;color:#6b7280;margin-bottom:6px">${z.emoji||''} ${escHtml(z.label)}</p>
+    </div>`;
+  });
+  html+=`</div>
+    <p style="text-align:center;font-size:13px;color:#9ca3af" id="drag-progress">0/${draggables.length} placed</p>
+  </div>`;
+  return html;
+}
+
+// Touch-based drag & drop
+let dragEl=null,dragGhost=null,dragId=null,dragStartX=0,dragStartY=0;
+
+function initDragDrop(){
+  document.querySelectorAll('.drag-item').forEach(el=>{
+    el.addEventListener('touchstart',onDragStart,{passive:false});
+    el.addEventListener('mousedown',onDragStart);
+  });
+}
+
+function onDragStart(e){
+  if(dragEl) return;
+  const el=e.currentTarget;
+  if(el.classList.contains('placed')||el.classList.contains('placed-correct')||el.classList.contains('placed-wrong')) return;
+  dragEl=el;
+  dragId=el.dataset.id;
+  const ghost=document.getElementById('drag-ghost');
+  ghost.textContent=el.textContent;
+  ghost.style.display='block';
+  const touch=e.touches?e.touches[0]:e;
+  dragStartX=touch.clientX;dragStartY=touch.clientY;
+  ghost.style.left=(touch.clientX-30)+'px';
+  ghost.style.top=(touch.clientY-20)+'px';
+  document.addEventListener('touchmove',onDragMove,{passive:false});
+  document.addEventListener('touchend',onDragEnd);
+  document.addEventListener('mousemove',onDragMove);
+  document.addEventListener('mouseup',onDragEnd);
+  e.preventDefault();
+}
+
+function onDragMove(e){
+  if(!dragEl) return;
+  const touch=e.touches?e.touches[0]:e;
+  const ghost=document.getElementById('drag-ghost');
+  ghost.style.left=(touch.clientX-30)+'px';
+  ghost.style.top=(touch.clientY-20)+'px';
+  // Highlight zones
+  document.querySelectorAll('.drag-zone').forEach(z=>{
+    const r=z.getBoundingClientRect();
+    z.classList.toggle('over',touch.clientX>=r.left&&touch.clientX<=r.right&&touch.clientY>=r.top&&touch.clientY<=r.bottom);
+  });
+  e.preventDefault();
+}
+
+function onDragEnd(e){
+  if(!dragEl) return;
+  document.getElementById('drag-ghost').style.display='none';
+  document.removeEventListener('touchmove',onDragMove);
+  document.removeEventListener('touchend',onDragEnd);
+  document.removeEventListener('mousemove',onDragMove);
+  document.removeEventListener('mouseup',onDragEnd);
+
+  const touch=e.changedTouches?e.changedTouches[0]:e;
+  let dropped=null;
+  document.querySelectorAll('.drag-zone').forEach(z=>{
+    const r=z.getBoundingClientRect();
+    z.classList.remove('over');
+    if(touch.clientX>=r.left&&touch.clientX<=r.right&&touch.clientY>=r.top&&touch.clientY<=r.bottom) dropped=z;
+  });
+
+  if(dropped){
+    const zoneId=dropped.dataset.zone;
+    const targetZoneId=dragEl.dataset.target;
+    const isCorrect=zoneId===targetZoneId;
+    STATE.dragPlacements[dragId]=zoneId;
+    dragEl.classList.add(isCorrect?'placed-correct':'placed-wrong');
+
+    // Move visually into zone
+    const clone=dragEl.cloneNode(true);
+    clone.classList.remove('drag-item');
+    clone.classList.add(isCorrect?'placed-correct':'placed-wrong');
+    dropped.appendChild(clone);
+    dragEl.classList.add('placed');
+
+    if(navigator.vibrate) navigator.vibrate(isCorrect?[50,30,50]:[200]);
+
+    const round=STATE.activeGame.rounds[STATE.gameRound];
+    const total=(round.draggables||[]).length;
+    const n=Object.keys(STATE.dragPlacements).length;
+    const prog=document.getElementById('drag-progress');
+    if(prog) prog.textContent=`${n}/${total} placed`;
+
+    if(n===total){
+      const allCorrect=(round.draggables||[]).every(d=>STATE.dragPlacements[d.id]===d.targetZoneId);
+      if(allCorrect) STATE.gameScore++;
+      STATE.gamePhase='reviewing';
+      setTimeout(addReviewPanel,800);
+    }
+  }
+
+  dragEl=null;dragId=null;
+}
+
+function addReviewPanel(){
+  const gc=document.getElementById('game-content');
+  if(gc.querySelector('.review-box')) return;
+  const game=STATE.activeGame;
+  const round=game.rounds[STATE.gameRound];
+  const rev=document.createElement('div');
+  rev.className='review-box';
+  rev.innerHTML=`<p class="explanation">💡 ${escHtml(round.explanation)}</p>
+    <button class="btn btn-primary" style="width:100%" onclick="nextRound()">${STATE.gameRound+1>=game.totalRounds?'🏆 Finish!':'Next Round →'}</button>`;
+  gc.appendChild(rev);
+}
+
+function showHint(){
+  STATE.hintVisible=true;
+  // Partial re-render
+  const gc=document.getElementById('game-content');
+  const hintWrap=gc.querySelector('.btn-ghost[onclick="showHint()"]')?.parentElement;
+  if(hintWrap){
+    const round=STATE.activeGame.rounds[STATE.gameRound];
+    hintWrap.innerHTML=`<div class="hint-box">💡 Hint: ${escHtml(round.hint)}</div>`;
+  }
+}
+
+function nextRound(){
+  STATE.gameRound++;
+  STATE.gamePhase='playing';
+  STATE.hintVisible=false;
+  STATE.matchSelectedLeft=null;
+  STATE.matchMatched={};
+  STATE.tapSelected=new Set();
+  STATE.checklistChecked=new Set();
+  STATE.dragPlacements={};
+  if(STATE.gameRound>=STATE.activeGame.totalRounds){
+    STATE.gamePhase='complete';
+    // Update history score
+    if(STATE.history.length>0){
+      STATE.history[0].score=STATE.gameScore;
+      save();
+    }
+  }
+  renderGame();
+}
+
+// ─── Complete screen ───
+function renderComplete(){
+  const game=STATE.activeGame;
+  const total=game.totalRounds;
+  const s=STATE.gameScore;
+  const pct=s/total;
+  const stars=pct===1?'⭐⭐⭐':pct>=0.6?'⭐⭐':'⭐';
+  const msg=pct===1?'Perfect!':pct>=0.6?'Well done!':pct>=0.33?'Good start!':'Keep trying!';
+
+  document.getElementById('game-content').innerHTML=`
+    <div class="complete-screen">
+      <div style="font-size:80px;animation:celebrate .6s ease">🏆</div>
+      <div style="font-size:42px">${stars}</div>
+      <h2 style="font-size:28px;font-weight:900;color:#111">${msg}</h2>
+      <p style="font-size:20px;font-weight:700;color:var(--brand)">${s} out of ${total} correct!</p>
+      <div style="background:var(--brand-light);border-radius:18px;padding:16px 18px;border:2px solid #e9d5ff;max-width:300px">
+        <p style="color:#7c3aed;font-style:italic;font-size:15px;line-height:1.5">"${escHtml(game.completionMessage)}"</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:280px">
+        <button class="btn btn-primary btn-xl" onclick="generateGame()">🔄 Play Again</button>
+        <button class="btn btn-secondary" style="width:100%;padding:14px" onclick="showMainScreen('location')">📍 New Location</button>
+        <button class="btn btn-ghost" style="width:100%" onclick="showMainScreen('home')">👦 Change Child</button>
+      </div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════
+//  HISTORY
+// ═══════════════════════════════════════════════════
+function renderHistory(){
+  const body=document.getElementById('history-body');
+  if(!STATE.history.length){
+    body.innerHTML=`<div class="empty-state"><div class="big-emoji">📖</div><h2 style="font-size:22px;font-weight:800;color:#374151">No adventures yet!</h2><p style="color:#9ca3af">Completed games will show up here.</p></div>`;
+    return;
+  }
+  body.innerHTML=STATE.history.map(h=>{
+    const date=h.completedAt?new Date(h.completedAt).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}):'';
+    return `<div class="card" style="gap:8px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:26px">${h.profileAvatar||'👦'}</span>
+          <div>
+            <div style="font-weight:800;color:#111">${escHtml(h.profileName||'')}</div>
+            <div style="font-size:12px;color:#9ca3af">${date}</div>
+          </div>
+        </div>
+        ${h.score!=null?`<span class="badge badge-green">⭐ ${h.score}/${h.totalRounds}</span>`:''}
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:20px">${h.placeEmoji||'📍'}</span>
+        <span style="font-size:14px;font-weight:600;color:#374151">${escHtml(h.placeLabel||'')}</span>
+        ${h.gameTitle?`<span style="font-size:13px;color:#9ca3af">· ${escHtml(h.gameTitle)}</span>`:''}
+      </div>
+      ${h.skillTrack?`<span class="badge badge-purple">${h.skillTrack}</span>`:''}
+    </div>`;
+  }).join('');
+}
+
+function clearHistory(){
+  if(!confirm('Clear all history?')) return;
+  STATE.history=[];
+  save();
+  renderHistory();
+}
+
+// ═══════════════════════════════════════════════════
+//  UTILITIES
+// ═══════════════════════════════════════════════════
+function escHtml(str){
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ═══════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════
+(function init(){
+  if(STATE.apiKey&&STATE.apiKey.startsWith('sk-ant-')){
+    showMainScreen('home');
+  } else {
+    showScreen('setup');
+  }
+  // Pre-fill age label
+  updateAgeLabel(5);
+})();
+</script>
+</body>
+</html>
