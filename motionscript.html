@@ -488,22 +488,61 @@ const Parser = {
       });
     });
 
-    let warm = true; // palette phase
-    return segments.map((seg, i) => {
-      const type = Detect.type(seg);
-      if (/\[SHIFT\]/i.test(seg)) warm = !warm;
-      const scene = {
-        id: i,
-        text: seg,
-        type,
+    // Group default-type sentences into ~6-second scenes so each
+    // visualization window covers 5–10 seconds of speech.
+    const TARGET_MS = 6000;
+    let warm = true;
+    const scenes = [];
+    let buf = [], bufMs = 0;
+
+    const flushBuf = () => {
+      if (!buf.length) return;
+      const joined = buf.join(' ');
+      const type = Detect.type(joined);
+      scenes.push({
+        id: scenes.length, text: joined, type,
         palette: warm ? 'warm' : 'cool',
-        startMs: 0,
-        endMs: 0,
-        duration: Parser.readingTime(seg),
-        data: Parser.extractData(type, seg)
-      };
-      return scene;
+        startMs: 0, endMs: 0, duration: bufMs,
+        data: Parser.extractData(type, joined)
+      });
+      buf = []; bufMs = 0;
+    };
+
+    segments.forEach(seg => {
+      // Control tokens always break into their own scene
+      if (/\[PAUSE\]|\[BEAT\]/i.test(seg)) {
+        flushBuf();
+        scenes.push({
+          id: scenes.length, text: seg, type: 'transition',
+          palette: warm ? 'warm' : 'cool',
+          startMs: 0, endMs: 0, duration: 1600, data: {}
+        });
+        return;
+      }
+      if (/\[SHIFT\]/i.test(seg)) { warm = !warm; return; }
+
+      // Special scene types (statistic, quote, list, etc.) stand alone
+      const segType = Detect.type(seg);
+      const segMs   = Parser.readingTime(seg);
+      if (segType !== 'default') {
+        flushBuf();
+        scenes.push({
+          id: scenes.length, text: seg, type: segType,
+          palette: warm ? 'warm' : 'cool',
+          startMs: 0, endMs: 0, duration: Math.max(segMs, 4000),
+          data: Parser.extractData(segType, seg)
+        });
+        return;
+      }
+
+      // Accumulate default sentences until we hit ~6 seconds
+      if (bufMs > 0 && bufMs + segMs > TARGET_MS) flushBuf();
+      buf.push(seg);
+      bufMs += segMs;
+      if (bufMs >= TARGET_MS) flushBuf();
     });
+    flushBuf();
+    return scenes;
   },
 
   readingTime(text, wpm=200) {
@@ -1781,63 +1820,75 @@ const Transcriber = {
     return result.chunks || [];
   },
 
-  // Convert Whisper chunks → scenes with pacing-aware type selection
+  // Convert Whisper chunks → scenes grouped into ~5–10 second windows
   buildScenes(chunks) {
     if (!chunks.length) return [];
+    const TARGET_MS = 6000; // aim for ~6 seconds per scene
+    const MAX_MS    = 10000; // hard cap at 10 seconds
+
+    // ── Step 1: merge fine-grained Whisper chunks into time windows ──
+    const groups = [];
+    let cur = null;
+    chunks.forEach(chunk => {
+      const text = chunk.text.trim().replace(/^\s*[,\.]\s*/, '');
+      if (!text) return;
+      const [startSec, endSec] = chunk.timestamp;
+      const startMs = Math.round((startSec || 0) * 1000);
+      const endMs   = endSec != null ? Math.round(endSec * 1000) : startMs + 2000;
+
+      if (!cur) {
+        cur = { startMs, endMs, texts: [text] };
+      } else {
+        const dur = endMs - cur.startMs;
+        if (dur > MAX_MS) {
+          groups.push(cur);
+          cur = { startMs, endMs, texts: [text] };
+        } else {
+          cur.endMs = endMs;
+          cur.texts.push(text);
+          if (dur >= TARGET_MS) { groups.push(cur); cur = null; }
+        }
+      }
+    });
+    if (cur) groups.push(cur);
+
+    // ── Step 2: build scenes from groups with pacing-aware types ──
     const scenes = [];
     let paletteWarm = true;
     let sceneId = 0;
 
-    chunks.forEach((chunk, i) => {
-      const text = chunk.text.trim().replace(/^\s*[,\.]\s*/, '');
+    groups.forEach((grp, i) => {
+      const text = grp.texts.join(' ').trim();
       if (!text) return;
 
-      const [startSec, endSec] = chunk.timestamp;
-      const startMs = Math.round((startSec || 0) * 1000);
-      // If whisper returns null endSec (last chunk), estimate from duration
-      const endMs   = endSec != null ? Math.round(endSec * 1000) : startMs + 3000;
-      const durMs   = Math.max(800, endMs - startMs);
-
-      // ── PACING ANALYSIS ──────────────────────────────────────────
-      const words     = text.split(/\s+/).filter(Boolean).length;
-      const durSec    = durMs / 1000;
-      const wps       = words / Math.max(0.1, durSec);
-      // gap from previous chunk
-      const prevEnd   = i > 0 && chunks[i-1].timestamp[1] != null
-                        ? chunks[i-1].timestamp[1] * 1000 : startMs;
-      const gapMs     = startMs - prevEnd;
-
-      // Insert a transition scene for natural pauses > 1.5 s
-      if (i > 0 && gapMs > 1500) {
-        scenes.push({
-          id: sceneId++, text: '', type: 'transition',
-          palette: paletteWarm ? 'warm' : 'cool',
-          startMs: Math.round(prevEnd + 50),
-          endMs: startMs - 50,
-          duration: Math.round(gapMs - 100),
-          data: {}, _pacing: 'pause'
-        });
+      // Insert a transition for natural pauses > 1.5 s between groups
+      if (i > 0) {
+        const gapMs = grp.startMs - groups[i-1].endMs;
+        if (gapMs > 1500) {
+          scenes.push({
+            id: sceneId++, text: '', type: 'transition',
+            palette: paletteWarm ? 'warm' : 'cool',
+            startMs: groups[i-1].endMs + 50,
+            endMs: grp.startMs - 50,
+            duration: Math.max(100, gapMs - 100),
+            data: {}, _pacing: 'pause'
+          });
+        }
       }
 
-      // Base type from content
+      const durMs = Math.max(1000, grp.endMs - grp.startMs);
+      const words = text.split(/\s+/).filter(Boolean).length;
+      const wps   = words / Math.max(0.1, durMs / 1000);
+
       let type = Detect.type(text);
-
-      // Override with pacing rules:
-      // Fast speech (> 4.5 wps) → force default (complex animation can't keep up)
-      if (wps > 4.5 && !['statistic','brand','transition'].includes(type)) {
-        type = 'default';
-      }
-      // Slow, deliberate speech on short text (< 2.5 wps, ≤ 5 words) → transition/brand
-      if (wps < 2.5 && words <= 5 && type === 'default') {
-        type = words <= 3 ? 'brand' : 'transition';
-      }
+      if (wps > 4.5 && !['statistic','brand','transition'].includes(type)) type = 'default';
+      if (wps < 2.5 && words <= 5 && type === 'default') type = words <= 3 ? 'brand' : 'transition';
 
       paletteWarm = sceneId % 6 < 3;
-
       scenes.push({
         id: sceneId++, text, type,
         palette: paletteWarm ? 'warm' : 'cool',
-        startMs, endMs, duration: durMs,
+        startMs: grp.startMs, endMs: grp.endMs, duration: durMs,
         data: Parser.extractData(type, text),
         _pacing: wps > 4.5 ? 'fast' : wps < 2.0 ? 'slow' : 'normal',
         _wps: Math.round(wps * 10) / 10
