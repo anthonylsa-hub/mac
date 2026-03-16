@@ -924,6 +924,7 @@ const Engine = {
     if (State.playTimer) { clearTimeout(State.playTimer); State.playTimer = null; }
     if (State.mode === 'sync') {
       document.getElementById('audio-el').pause();
+      document.getElementById('vid-el').pause();
     }
   },
 
@@ -938,6 +939,7 @@ const Engine = {
     SceneList.render(State.scenes);
     if (State.mode === 'sync') {
       document.getElementById('audio-el').currentTime = 0;
+      document.getElementById('vid-el').currentTime = 0;
     }
   },
 
@@ -971,16 +973,21 @@ const Engine = {
     }, dur);
   },
 
+  _mediaEl() {
+    return State.isVideo
+      ? document.getElementById('vid-el')
+      : document.getElementById('audio-el');
+  },
+
   startSyncPlay() {
-    const audioEl = document.getElementById('audio-el');
-    audioEl.play().catch(e => console.warn('Audio play failed:', e));
+    Engine._mediaEl().play().catch(e => console.warn('Media play failed:', e));
     Engine.syncTick();
   },
 
   syncTick() {
     if (!State.isPlaying || State.mode !== 'sync') return;
-    const audioEl = document.getElementById('audio-el');
-    const currentMs = audioEl.currentTime * 1000;
+    const mediaEl = Engine._mediaEl();
+    const currentMs = mediaEl.currentTime * 1000;
     const scenes = State.scenes;
 
     // Find which scene should be showing
@@ -994,12 +1001,12 @@ const Engine = {
     }
 
     // Update scrubber
-    if (audioEl.duration) {
-      const pct = (audioEl.currentTime / audioEl.duration) * State.scenes.length;
+    if (mediaEl.duration) {
+      const pct = (mediaEl.currentTime / mediaEl.duration) * State.scenes.length;
       document.getElementById('scrubber').value = Math.round(pct);
     }
 
-    if (!audioEl.ended) {
+    if (!mediaEl.ended) {
       requestAnimationFrame(() => Engine.syncTick());
     } else {
       Engine.pause();
@@ -1023,8 +1030,8 @@ const Engine = {
     Engine.pause();
     Engine.showScene(idx);
     if (State.mode === 'sync' && State.scenes[idx]) {
-      const audioEl = document.getElementById('audio-el');
-      audioEl.currentTime = State.scenes[idx].startMs / 1000;
+      const t = State.scenes[idx].startMs / 1000;
+      Engine._mediaEl().currentTime = t;
     }
   }
 };
@@ -1253,69 +1260,69 @@ const App = {
     const trText = document.getElementById('tr-text').value.trim();
     if (!avFile && !trText) { App.notify('Please upload a media file and/or transcript.'); return; }
     if (!avFile) { App.notify('Please upload an audio or video file.'); return; }
+    if (!trText) {
+      App.notify('No transcript yet — click "Auto-Transcribe with Whisper AI" to generate one, or paste a transcript in the box above.', 5000);
+      return;
+    }
 
     // Parse transcript
     let scenes = [];
-    if (trText) {
-      // Detect SRT vs plain text
-      const looksLikeSRT = /\d{2}:\d{2}:\d{2}[,\.]\d{3}\s*-->/.test(trText);
-      if (looksLikeSRT) {
-        const entries = SRTParser.parse(trText);
-        scenes = entries.map((e, i) => {
-          const type = Detect.type(e.text);
-          return {
-            id: i, text: e.text, type,
-            palette: i % 6 < 3 ? 'warm' : 'cool',
-            startMs: e.startMs, endMs: e.endMs,
-            duration: e.endMs - e.startMs,
-            data: Parser.extractData(type, e.text)
-          };
-        });
-        State.syncType = 'srt';
-        document.getElementById('sync-note').classList.add('hidden');
-      } else {
-        // Plain text — approximate
-        scenes = Parser.parse(trText);
-        State.syncType = 'approx';
-        // Assign even timestamps after we get audio duration
-        document.getElementById('sync-note').classList.remove('hidden');
-      }
+    const looksLikeSRT = /\d{2}:\d{2}:\d{2}[,\.]\d{3}\s*-->/.test(trText);
+    if (looksLikeSRT) {
+      const entries = SRTParser.parse(trText);
+      scenes = entries.map((e, i) => {
+        const type = Detect.type(e.text);
+        return {
+          id: i, text: e.text, type,
+          palette: i % 6 < 3 ? 'warm' : 'cool',
+          startMs: e.startMs, endMs: e.endMs,
+          duration: e.endMs - e.startMs,
+          data: Parser.extractData(type, e.text)
+        };
+      });
+      State.syncType = 'srt';
+      document.getElementById('sync-note').classList.add('hidden');
+    } else {
+      scenes = Parser.parse(trText);
+      State.syncType = 'approx';
+      document.getElementById('sync-note').classList.remove('hidden');
     }
 
     State.scenes = scenes;
     document.getElementById('scrubber').max = Math.max(0, scenes.length - 1);
     SceneList.render(scenes);
 
-    // Set up audio
+    // Set up media element(s)
     const audioEl = document.getElementById('audio-el');
     const url = URL.createObjectURL(avFile);
 
     if (State.isVideo) {
       const vidEl = document.getElementById('vid-el');
       vidEl.src = url;
-      audioEl.src = url; // won't use for video, we'll use vid directly
       document.getElementById('vid-inset').style.display = 'block';
-      // Use video element for sync
-      vidEl.addEventListener('timeupdate', App.onVideoTimeUpdate);
+      document.getElementById('waveform-row').style.display = 'none';
+      vidEl.addEventListener('loadedmetadata', () => {
+        State.audioDuration = vidEl.duration * 1000;
+        if (State.syncType === 'approx' && scenes.length) {
+          Parser.assignEvenTimestamps(scenes, State.audioDuration);
+          SceneList.render(scenes);
+        }
+      }, { once: true });
     } else {
       audioEl.src = url;
+      audioEl.addEventListener('loadedmetadata', () => {
+        State.audioDuration = audioEl.duration * 1000;
+        if (State.syncType === 'approx' && scenes.length) {
+          Parser.assignEvenTimestamps(scenes, State.audioDuration);
+          SceneList.render(scenes);
+        }
+        document.getElementById('waveform-row').style.display = 'block';
+        Waveform.init(audioEl);
+      }, { once: true });
     }
 
-    audioEl.addEventListener('loadedmetadata', () => {
-      State.audioDuration = audioEl.duration * 1000;
-      if (State.syncType === 'approx' && scenes.length) {
-        Parser.assignEvenTimestamps(scenes, State.audioDuration);
-        SceneList.render(scenes);
-      }
-      // Init waveform
-      document.getElementById('waveform-row').style.display = 'block';
-      Waveform.init(audioEl);
-    }, { once: true });
-
-    if (scenes.length) {
-      Engine.showScene(0);
-    }
-    App.notify(`Ready to sync. ${scenes.length} scenes parsed.`);
+    if (scenes.length) Engine.showScene(0);
+    App.notify(`Ready. ${scenes.length} scenes parsed — press ▶ to play.`);
   },
 
   onVideoTimeUpdate() {
@@ -1422,19 +1429,25 @@ const App = {
     document.getElementById('sync-note').classList.add('hidden');
     SceneList.render(scenes);
 
-    // Set up audio element
+    // Set up media element(s)
     const audioEl = document.getElementById('audio-el');
     const url      = URL.createObjectURL(State.audioFile);
     if (State.isVideo) {
-      document.getElementById('vid-el').src = url;
+      const vidEl = document.getElementById('vid-el');
+      vidEl.src = url;
       document.getElementById('vid-inset').style.display = 'block';
+      document.getElementById('waveform-row').style.display = 'none';
+      vidEl.addEventListener('loadedmetadata', () => {
+        State.audioDuration = vidEl.duration * 1000;
+      }, { once: true });
+    } else {
+      audioEl.src = url;
+      audioEl.addEventListener('loadedmetadata', () => {
+        State.audioDuration = audioEl.duration * 1000;
+        document.getElementById('waveform-row').style.display = 'block';
+        Waveform.init(audioEl);
+      }, { once: true });
     }
-    audioEl.src = url;
-    audioEl.addEventListener('loadedmetadata', () => {
-      State.audioDuration = audioEl.duration * 1000;
-      document.getElementById('waveform-row').style.display = 'block';
-      Waveform.init(audioEl);
-    }, { once: true });
 
     if (scenes.length) Engine.showScene(0);
     App.notify(`Transcribed ${chunks.length} segments → ${scenes.length} scenes with pacing.`, 4000);
