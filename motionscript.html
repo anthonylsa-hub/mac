@@ -336,7 +336,8 @@ body.light .s-transition{background:#1A1A2E !important;}
     <div id="xc-stage">Initialising…</div>
     <div id="xc-bar-wrap"><div id="xc-bar"></div></div>
     <div id="xc-pct">0%</div>
-    <button id="xc-cancel" onclick="Transcriber.cancel()">Cancel</button>
+    <div style="font-size:10px;color:var(--muted);text-align:center;line-height:1.5;">Taking too long? Cancel and paste an SRT or transcript manually.</div>
+    <button id="xc-cancel" onclick="Transcriber.cancel()">✕ Cancel transcription</button>
   </div>
 </div>
 
@@ -1277,6 +1278,11 @@ const App = {
     if (!avFile && !trText) { App.notify('Please upload a media file and/or transcript.'); return; }
     if (!avFile) { App.notify('Please upload an audio or video file.'); return; }
     if (!trText) {
+      if (Transcriber._userCancelled) {
+        App.notify('Paste a transcript or SRT in the box above, then click ⚙ Parse & Sync again.', 5000);
+        document.getElementById('tr-text').focus();
+        return;
+      }
       // No transcript yet — kick off auto-transcription automatically
       App.transcribeAudio();
       return;
@@ -1658,13 +1664,15 @@ const App = {
 const Transcriber = {
   _pipe: null,
   _cancelled: false,
+  _userCancelled: false,
   _heartbeat: null,
 
   cancel() {
     Transcriber._cancelled = true;
+    Transcriber._userCancelled = true;
     Transcriber._clearHeartbeat();
     document.getElementById('xc-overlay').classList.add('hidden');
-    App.notify('Transcription cancelled.');
+    App.notify('Cancelled. To continue, paste a transcript or SRT in the box above then click ⚙ Parse & Sync.', 6000);
   },
 
   _setProgress(pct, msg) {
@@ -1689,6 +1697,7 @@ const Transcriber = {
 
   async transcribe(file) {
     Transcriber._cancelled = false;
+    Transcriber._userCancelled = false;
     Transcriber._clearHeartbeat();
     document.getElementById('xc-overlay').classList.remove('hidden');
     Transcriber._setProgress(0, 'Loading Transformers.js library…');
@@ -1758,10 +1767,19 @@ const Transcriber = {
               }
               if (p.status === 'done') {
                 if (fileBytes[p.file]) fileBytes[p.file].loaded = fileBytes[p.file].total;
+                totalLoaded = Object.values(fileBytes).reduce((a,b) => a + b.loaded, 0);
+                totalSize   = Object.values(fileBytes).reduce((a,b) => a + b.total,  0);
+                // If all known files are done, WASM compilation is next — it has no callbacks
+                if (totalSize > 0 && totalLoaded >= totalSize) {
+                  Transcriber._setProgress(0.45, 'Download complete — compiling WebAssembly model…');
+                  Transcriber._startHeartbeat(s =>
+                    `Compiling model… ${s}s — please wait, first-time only (cancel to use manual transcript)`
+                  );
+                }
               }
               if (p.status === 'ready') {
                 Transcriber._clearHeartbeat();
-                Transcriber._setProgress(0.46, 'Model loaded ✓  Decoding audio…');
+                Transcriber._setProgress(0.46, 'Model ready ✓  Decoding audio…');
               }
             }
           }
