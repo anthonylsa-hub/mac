@@ -1700,6 +1700,7 @@ const Transcriber = {
     Transcriber._userCancelled = false;
     Transcriber._clearHeartbeat();
     document.getElementById('xc-overlay').classList.remove('hidden');
+    document.getElementById('xc-stage').style.color = ''; // reset error colour from previous run
     Transcriber._setProgress(0, 'Loading Transformers.js library…');
 
     // ── Step 1: load the library ─────────────────────────────────
@@ -1741,7 +1742,9 @@ const Transcriber = {
       );
 
       try {
-        Transcriber._pipe = await pipeline(
+        // Race the pipeline load against a 3-minute timeout.
+        // WASM compilation can hang forever on some browsers/devices with no error.
+        const pipelinePromise = pipeline(
           'automatic-speech-recognition',
           'Xenova/whisper-tiny.en',
           {
@@ -1784,20 +1787,31 @@ const Transcriber = {
             }
           }
         );
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('timeout')), 180000)
+        );
+        Transcriber._pipe = await Promise.race([pipelinePromise, timeoutPromise]);
         Transcriber._clearHeartbeat();
       } catch(e) {
         Transcriber._clearHeartbeat();
-        document.getElementById('xc-overlay').classList.add('hidden');
-        // Friendly error for common failures
-        const msg = e.message || '';
-        if (msg.includes('fetch') || msg.includes('network')) {
-          App.notify('Model download failed — check your internet connection.', 6000);
-        } else if (msg.includes('wasm') || msg.includes('WASM')) {
-          App.notify('WebAssembly failed to initialise. Try Chrome or Edge.', 6000);
-        } else {
-          App.notify('Model load failed: ' + msg, 6000);
-        }
         Transcriber._pipe = null; // don't cache a broken pipeline
+        Transcriber._userCancelled = true; // treat as cancelled so Parse & Sync prompts for transcript
+        const msg = e.message || '';
+        let errText;
+        if (msg === 'timeout') {
+          errText = 'Model took too long to load (>3 min). Cancel and paste a transcript manually instead.';
+        } else if (msg.includes('fetch') || msg.includes('network')) {
+          errText = 'Model download failed — check your internet connection.';
+        } else if (msg.includes('wasm') || msg.includes('WASM')) {
+          errText = 'WebAssembly failed to initialise. Try Chrome or Edge.';
+        } else {
+          errText = 'Model load failed: ' + msg;
+        }
+        // Show error inside the overlay (big + visible) rather than the small bottom bar
+        document.getElementById('xc-stage').textContent = '⚠ ' + errText;
+        document.getElementById('xc-stage').style.color = 'var(--warm)';
+        Transcriber._setProgress(0, '');
+        // Leave overlay open so user can read the message, cancel closes it
         return null;
       }
     }
@@ -1806,6 +1820,19 @@ const Transcriber = {
     Transcriber._setProgress(0.48, 'Decoding audio to 16 kHz…');
 
     // ── Step 4: decode audio to 16 kHz mono Float32 ──────────────
+    // Large files (>600 MB) will likely exhaust browser heap when loaded via arrayBuffer().
+    // Warn the user and bail rather than crashing silently.
+    const MB = file.size / (1024 * 1024);
+    if (MB > 600) {
+      document.getElementById('xc-stage').textContent =
+        `⚠ File is ${MB.toFixed(0)} MB — too large for in-browser transcription. ` +
+        `Use a shorter clip (<10 min) or paste a transcript manually, then click ⚙ Parse & Sync.`;
+      document.getElementById('xc-stage').style.color = 'var(--warm)';
+      Transcriber._setProgress(0, '');
+      Transcriber._userCancelled = true;
+      return null;
+    }
+
     let float32, audioDurSec;
     try {
       const arrayBuf = await file.arrayBuffer();
