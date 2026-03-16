@@ -904,7 +904,16 @@ const Waveform = {
 // ── Animation Engine ──────────────────────────────────────────────
 const Engine = {
   start() {
-    if (!State.scenes.length) return;
+    if (!State.scenes.length) {
+      if (State.mode === 'sync') {
+        App.notify(State.audioFile
+          ? 'Click "⚙ Parse & Sync" first to set up your scenes.'
+          : 'Upload a media file first, then click "⚙ Parse & Sync".', 3500);
+      } else {
+        App.notify('Parse a script first using "▷ Parse & Preview".', 3000);
+      }
+      return;
+    }
     State.isPlaying = true;
     document.getElementById('btn-play').textContent = '⏸';
     if (State.currentIdx < 0) {
@@ -1261,7 +1270,8 @@ const App = {
     if (!avFile && !trText) { App.notify('Please upload a media file and/or transcript.'); return; }
     if (!avFile) { App.notify('Please upload an audio or video file.'); return; }
     if (!trText) {
-      App.notify('No transcript yet — click "Auto-Transcribe with Whisper AI" to generate one, or paste a transcript in the box above.', 5000);
+      // No transcript yet — kick off auto-transcription automatically
+      App.transcribeAudio();
       return;
     }
 
