@@ -345,6 +345,13 @@ body.light .s-transition{background:#1A1A2E !important;}
 // MOTION SCRIPT — Complete App
 // ════════════════════════════════════════════════════════════════════
 
+// Safety shim: if GSAP failed to load from CDN, replace with no-ops so
+// scenes still render (no animation) instead of crashing silently.
+if (typeof gsap === 'undefined') {
+  window.gsap = new Proxy({}, { get: () => () => {} });
+  console.warn('GSAP not loaded — animations disabled. Check CDN connectivity.');
+}
+
 const SAMPLE_SCRIPT = `Rochester, New York. December 1975.
 The Genesee River runs through the middle of Rochester, dark and slow in December.
 Eastman Kodak.
@@ -1331,7 +1338,10 @@ const App = {
       }, { once: true });
     }
 
-    if (scenes.length) Engine.showScene(0);
+    if (scenes.length) {
+      try { Engine.showScene(0); }
+      catch(e) { console.error('showScene error:', e); App.notify('Render error: ' + e.message, 5000); return; }
+    }
     App.notify(`Ready. ${scenes.length} scenes parsed — press ▶ to play.`);
   },
 
@@ -1459,7 +1469,10 @@ const App = {
       }, { once: true });
     }
 
-    if (scenes.length) Engine.showScene(0);
+    if (scenes.length) {
+      try { Engine.showScene(0); }
+      catch(e) { console.error('showScene error:', e); App.notify('Render error: ' + e.message, 5000); return; }
+    }
     App.notify(`Transcribed ${chunks.length} segments → ${scenes.length} scenes with pacing.`, 4000);
   },
 
